@@ -745,3 +745,98 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+/* --- Dashboard Tabs UI Styling --- */
+.dashboard-view-container {
+  max-width: 1000px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.dashboard-tabs {
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 1px;
+  margin-bottom: 32px;
+}
+
+.tab-btn {
+  background: transparent;
+  border: none;
+  color: #8e8e8e;
+  padding: 12px 24px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+  border-radius: 8px 8px 0 0;
+}
+
+.tab-btn:hover {
+  color: #ececec;
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.tab-btn.active {
+  color: #ffaa66;
+  border-bottom-color: #ff6b00;
+  background-color: rgba(255, 107, 0, 0.05);
+}
+
+.tab-content {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.form-input {
+  width: 100%;
+  padding: 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.4);
+  color: #ececec;
+  outline: none;
+  transition: all 0.3s ease;
+  box-sizing: border-box;
+  font-size: 1rem;
+  margin-bottom: 16px;
+}
+
+.form-input:focus {
+  border-color: rgba(255, 107, 0, 0.8);
+  box-shadow: 0 0 12px rgba(255, 107, 0, 0.25);
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.action-submit-btn {
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #ff6b00 0%, #ff3c00 100%);
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 1rem;
+  box-shadow: 0 4px 15px rgba(255, 107, 0, 0.3);
+}
+
+.action-submit-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(255, 107, 0, 0.5);
+  background: linear-gradient(135deg, #ff8533 0%, #ff5522 100%);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
