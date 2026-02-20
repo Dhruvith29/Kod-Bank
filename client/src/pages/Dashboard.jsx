@@ -20,7 +20,8 @@ import {
 } from 'lucide-react';
 
 // Initialize Gemini API
-const genAI = new GoogleGenerativeAI('AIzaSyDZtwYwGRSoWyzv17_-WaEMQzEcsPR8Xj0');
+const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+const genAI = new GoogleGenerativeAI(apiKey);
 
 const Dashboard = () => {
     const [balance, setBalance] = useState('45,231.89');
@@ -93,7 +94,7 @@ const Dashboard = () => {
             }
 
             // Otherwise, send to Gemini
-            const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+            const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
             // Format history for Gemini chat
             const chatHistory = messages.slice(1).map(msg => ({
