@@ -16,13 +16,17 @@ app.use(cors({
 }));
 
 // Routes
-app.use('/auth', require('./routes/auth'));
-app.use('/user', require('./routes/user'));
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/user', require('./routes/user'));
 
 app.get('/', (req, res) => {
     res.send('KodBank API is running');
 });
 
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
-});
+if (require.main === module) {
+    app.listen(PORT, () => {
+        console.log(`Server is running on port ${PORT}`);
+    });
+}
+
+module.exports = app;
