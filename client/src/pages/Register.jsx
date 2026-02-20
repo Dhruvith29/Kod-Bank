@@ -39,7 +39,7 @@ const Register = () => {
         <div className="auth-container">
             <div className="auth-box">
                 <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'center' }}>
-                    <div className="brand-icon" style={{ width: 40, height: 40, borderRadius: 8 }}></div>
+                    <div className="brand-icon" style={{ width: 80, height: 80, borderRadius: 16, boxShadow: '0 0 20px rgba(255, 107, 0, 0.5)' }}></div>
                 </div>
                 <h2>Create your account</h2>
                 <form onSubmit={handleSubmit} style={{ width: '100%' }}>
