@@ -38,8 +38,11 @@ const Register = () => {
     return (
         <div className="auth-container">
             <div className="auth-box">
-                <h2>Register for KodBank</h2>
-                <form onSubmit={handleSubmit}>
+                <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'center' }}>
+                    <div className="brand-icon" style={{ width: 40, height: 40, borderRadius: 8 }}></div>
+                </div>
+                <h2>Create your account</h2>
+                <form onSubmit={handleSubmit} style={{ width: '100%' }}>
                     <div className="form-group">
                         <label>UID</label>
                         <input type="text" name="uid" value={formData.uid} onChange={handleChange} required />
@@ -49,18 +52,18 @@ const Register = () => {
                         <input type="text" name="uname" value={formData.uname} onChange={handleChange} required />
                     </div>
                     <div className="form-group">
-                        <label>Email</label>
+                        <label>Email address</label>
                         <input type="email" name="email" value={formData.email} onChange={handleChange} required />
                     </div>
                     <div className="form-group">
-                        <label>Phone</label>
+                        <label>Phone number</label>
                         <input type="tel" name="phone" value={formData.phone} onChange={handleChange} required />
                     </div>
                     <div className="form-group">
                         <label>Password</label>
                         <input type="password" name="password" value={formData.password} onChange={handleChange} required />
                     </div>
-                    <button type="submit" className="auth-btn">Register</button>
+                    <button type="submit" className="auth-btn">Continue</button>
                 </form>
                 <p>Already have an account? <Link to="/login">Login</Link></p>
             </div>

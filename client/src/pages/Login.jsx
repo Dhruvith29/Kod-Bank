@@ -36,8 +36,11 @@ const Login = () => {
     return (
         <div className="auth-container">
             <div className="auth-box">
-                <h2>Login to KodBank</h2>
-                <form onSubmit={handleSubmit}>
+                <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'center' }}>
+                    <div className="brand-icon" style={{ width: 40, height: 40, borderRadius: 8 }}></div>
+                </div>
+                <h2>Welcome back</h2>
+                <form onSubmit={handleSubmit} style={{ width: '100%' }}>
                     <div className="form-group">
                         <label>Username</label>
                         <input type="text" name="uname" value={formData.uname} onChange={handleChange} required />
@@ -46,9 +49,9 @@ const Login = () => {
                         <label>Password</label>
                         <input type="password" name="password" value={formData.password} onChange={handleChange} required />
                     </div>
-                    <button type="submit" className="auth-btn">Login</button>
+                    <button type="submit" className="auth-btn">Continue</button>
                 </form>
-                <p>Don't have an account? <Link to="/register">Register</Link></p>
+                <p>Don't have an account? <Link to="/register">Sign up</Link></p>
             </div>
             <ToastContainer position="top-right" autoClose={3000} />
         </div>
