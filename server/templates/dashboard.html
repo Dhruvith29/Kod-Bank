@@ -1,0 +1,1393 @@
+{% extends 'base.html' %}
+
+{% block extra_head %}
+<!-- Lucide Icons -->
+<script src="https://unpkg.com/lucide@latest"></script>
+<!-- Marked.js for Markdown -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<!-- ApexCharts -->
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+<!-- Inter Font -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+    /* ── Analytics View ───────────────────────────────────────────── */
+    #analyticsView {
+        font-family: 'Inter', sans-serif;
+    }
+
+    .analytics-container {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 28px 24px 48px;
+    }
+
+    /* Search */
+    .analytics-search-wrap {
+        position: relative;
+        margin-bottom: 32px;
+    }
+
+    .analytics-search-row {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+    }
+
+    .analytics-input {
+        flex: 1;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 10px;
+        padding: 14px 18px;
+        font-size: 0.95rem;
+        color: #f1f5f9;
+        outline: none;
+        transition: border-color .2s;
+    }
+
+    .analytics-input:focus {
+        border-color: #3b82f6;
+    }
+
+    .analytics-input::placeholder {
+        color: #64748b;
+    }
+
+    .analytics-btn {
+        background: linear-gradient(135deg, #3b82f6, #6366f1);
+        color: #fff;
+        border: none;
+        border-radius: 10px;
+        padding: 14px 28px;
+        font-size: 0.95rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: opacity .2s, transform .15s;
+        white-space: nowrap;
+    }
+
+    .analytics-btn:hover {
+        opacity: .88;
+        transform: translateY(-1px);
+    }
+
+    .analytics-btn:active {
+        transform: translateY(0);
+    }
+
+    /* Autocomplete */
+    .autocomplete-dropdown {
+        position: absolute;
+        top: calc(100% + 4px);
+        left: 0;
+        right: 96px;
+        background: #1e2535;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 10px;
+        z-index: 200;
+        max-height: 240px;
+        overflow-y: auto;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, .45);
+        display: none;
+    }
+
+    .autocomplete-item {
+        padding: 11px 16px;
+        cursor: pointer;
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        transition: background .15s;
+    }
+
+    .autocomplete-item:hover,
+    .autocomplete-item.selected {
+        background: rgba(59, 130, 246, .18);
+    }
+
+    .autocomplete-symbol {
+        font-weight: 700;
+        color: #93c5fd;
+        min-width: 52px;
+        font-size: 0.9rem;
+    }
+
+    .autocomplete-name {
+        color: #94a3b8;
+        font-size: 0.85rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* Loading / Error */
+    .analytics-loading,
+    .analytics-error {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 60px 0;
+        gap: 16px;
+        color: #94a3b8;
+        font-size: 0.95rem;
+    }
+
+    .analytics-error {
+        color: #ef4444;
+    }
+
+    .spinner {
+        width: 36px;
+        height: 36px;
+        border: 3px solid rgba(59, 130, 246, .25);
+        border-top-color: #3b82f6;
+        border-radius: 50%;
+        animation: spin .8s linear infinite;
+    }
+
+    @keyframes spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    /* Dashboard header row */
+    .analytics-header-row {
+        display: flex;
+        align-items: baseline;
+        gap: 16px;
+        margin-bottom: 28px;
+        flex-wrap: wrap;
+    }
+
+    .analytics-ticker-name {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #f1f5f9;
+        letter-spacing: -0.5px;
+    }
+
+    .analytics-price {
+        font-size: 1.75rem;
+        font-weight: 600;
+        color: #f1f5f9;
+    }
+
+    .analytics-change {
+        font-size: 1rem;
+        font-weight: 600;
+        padding: 4px 12px;
+        border-radius: 20px;
+    }
+
+    .analytics-change.pos {
+        color: #10b981;
+        background: rgba(16, 185, 129, .12);
+    }
+
+    .analytics-change.neg {
+        color: #ef4444;
+        background: rgba(239, 68, 68, .12);
+    }
+
+    /* Stat cards */
+    .analytics-stat-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+        gap: 16px;
+        margin-bottom: 28px;
+    }
+
+    .analytics-card {
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.09);
+        border-radius: 14px;
+        padding: 20px;
+        transition: border-color .2s, transform .2s;
+        backdrop-filter: blur(6px);
+    }
+
+    .analytics-card:hover {
+        border-color: rgba(59, 130, 246, .4);
+        transform: translateY(-2px);
+    }
+
+    .analytics-card-label {
+        font-size: 0.78rem;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: .06em;
+        margin-bottom: 8px;
+    }
+
+    .analytics-card-value {
+        font-size: 1.4rem;
+        font-weight: 700;
+        color: #f1f5f9;
+    }
+
+    /* Section heading */
+    .analytics-section-title {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #94a3b8;
+        text-transform: uppercase;
+        letter-spacing: .07em;
+        margin: 0 0 16px;
+    }
+
+    /* Indicators grid */
+    .analytics-ind-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+        margin-bottom: 28px;
+    }
+
+    .analytics-ind-card {
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.09);
+        border-radius: 14px;
+        padding: 22px;
+        transition: border-color .2s, transform .2s;
+        backdrop-filter: blur(6px);
+    }
+
+    .analytics-ind-card:hover {
+        border-color: rgba(99, 102, 241, .4);
+        transform: translateY(-2px);
+    }
+
+    .analytics-ind-card.full-width {
+        grid-column: 1 / -1;
+    }
+
+    .analytics-ind-title {
+        font-size: 0.78rem;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: .06em;
+        margin-bottom: 14px;
+        font-weight: 600;
+    }
+
+    .analytics-ind-value {
+        font-size: 1.7rem;
+        font-weight: 700;
+        margin-bottom: 6px;
+    }
+
+    .analytics-ind-sub {
+        font-size: 0.82rem;
+        color: #94a3b8;
+        margin-bottom: 4px;
+    }
+
+    .analytics-ind-analysis {
+        font-size: 0.85rem;
+        margin-top: 10px;
+        font-weight: 500;
+        color: #94a3b8;
+    }
+
+    .analytics-ind-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 18px 32px;
+        margin-bottom: 10px;
+    }
+
+    .analytics-ind-pill {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .analytics-ind-pill .pill-label {
+        font-size: 0.74rem;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: .06em;
+    }
+
+    .analytics-ind-pill .pill-value {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #f1f5f9;
+    }
+
+    /* Chart */
+    .analytics-chart-card {
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.09);
+        border-radius: 14px;
+        padding: 22px;
+        backdrop-filter: blur(6px);
+    }
+
+    .chart-toggle-row {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 16px;
+    }
+
+    .chart-toggle-btn {
+        padding: 7px 18px;
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        background: transparent;
+        color: #94a3b8;
+        font-size: 0.85rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all .2s;
+    }
+
+    .chart-toggle-btn.active {
+        background: rgba(59, 130, 246, .2);
+        border-color: #3b82f6;
+        color: #93c5fd;
+    }
+
+    #analyticsChartContainer {
+        min-height: 320px;
+    }
+
+    /* Color helpers */
+    .c-green {
+        color: #10b981;
+    }
+
+    .c-red {
+        color: #ef4444;
+    }
+
+    .c-slate {
+        color: #94a3b8;
+    }
+
+    .c-blue {
+        color: #60a5fa;
+    }
+
+    @media (max-width: 640px) {
+        .analytics-ind-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .analytics-ind-card.full-width {
+            grid-column: auto;
+        }
+
+        .analytics-stat-grid {
+            grid-template-columns: 1fr 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="chat-layout">
+    <!-- Sidebar Overlay for Mobile -->
+    <div id="sidebarOverlay"
+        style="display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0,0,0,0.5); z-index: 5">
+    </div>
+
+    <!-- Sidebar -->
+    <aside id="chatSidebar" class="chat-sidebar">
+        <div class="sidebar-header">
+            <button class="new-chat-btn" onclick="startNewChat()">
+                <div style="display: flex; align-items: center; gap: 8px">
+                    <div class="brand-icon" style="width: 24px; height: 24px; border-radius: 6px"></div>
+                    <span>New chat</span>
+                </div>
+                <i data-lucide="plus" style="width: 16px; height: 16px;"></i>
+            </button>
+        </div>
+
+        <nav class="sidebar-nav">
+            <span>Views</span>
+            <button id="navChat" class="nav-item active" onclick="switchView('chat')">
+                <i data-lucide="message-square" style="width: 18px; height: 18px;"></i>
+                KodBank AI
+            </button>
+            <button id="navDashboard" class="nav-item" onclick="switchView('dashboard')">
+                <i data-lucide="layout-dashboard" style="width: 18px; height: 18px;"></i>
+                Dashboard
+            </button>
+            <button id="navNews" class="nav-item" onclick="switchView('news')">
+                <i data-lucide="newspaper" style="width: 18px; height: 18px;"></i>
+                News
+            </button>
+            <button id="navAnalytics" class="nav-item" onclick="switchView('analytics')">
+                <i data-lucide="bar-chart-2" style="width: 18px; height: 18px;"></i>
+                Stock Analytics
+            </button>
+
+            <span style="margin-top: 16px">Yesterday</span>
+            <button class="nav-item">
+                <i data-lucide="message-square" style="width: 16px; height: 16px;"></i>
+                <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Recent transactions
+                    review</span>
+            </button>
+        </nav>
+
+        <div class="sidebar-footer">
+            <button class="nav-item">
+                <i data-lucide="settings" style="width: 18px; height: 18px;"></i>
+                Settings
+            </button>
+            <button onclick="window.location.href='/login'" class="nav-item">
+                <i data-lucide="log-out" style="width: 18px; height: 18px;"></i>
+                Log out
+            </button>
+        </div>
+    </aside>
+
+    <!-- Chat View -->
+    <div id="chatView" class="chat-main">
+        <div class="chat-header-mobile">
+            <button class="nav-item" onclick="toggleSidebar()" style="width: auto; padding: 8px">
+                <i data-lucide="menu" style="width: 20px; height: 20px;"></i>
+            </button>
+            <div style="font-weight: 600">KodBank AI</div>
+            <div style="width: 36px"></div>
+        </div>
+
+        <div class="chat-content" id="chatContent">
+            <div class="chat-messages" id="chatMessages">
+                <!-- Messages will go here -->
+            </div>
+            <div id="chatAnchor"></div>
+        </div>
+
+        <div class="chat-input-container">
+            <form class="chat-input-wrapper" id="chatForm">
+                <textarea class="chat-input" id="chatInput" placeholder="Message KodBank AI..." rows="1"></textarea>
+                <button type="submit" class="chat-send-btn" id="chatSendBtn">
+                    <i data-lucide="send" style="width: 16px; height: 16px;"></i>
+                </button>
+            </form>
+            <div class="disclaimer-text">
+                KodBank AI can make mistakes. Consider verifying important financial information.
+            </div>
+        </div>
+    </div>
+
+    <!-- Dashboard View -->
+    <div id="dashboardView" class="chat-main" style="display: none; overflow-y: auto;">
+        <div class="chat-header-mobile">
+            <button class="nav-item" onclick="toggleSidebar()" style="width: auto; padding: 8px">
+                <i data-lucide="menu" style="width: 20px; height: 20px;"></i>
+            </button>
+            <div style="font-weight: 600">Dashboard</div>
+            <div style="width: 36px"></div>
+        </div>
+
+        <div class="dashboard-view-container">
+            <div class="dashboard-tabs">
+                <button id="tab-overview" class="tab-btn active" onclick="switchTab('overview')">Overview</button>
+                <button id="tab-transactions" class="tab-btn" onclick="switchTab('transactions')">Transactions</button>
+                <button id="tab-deposit" class="tab-btn" onclick="switchTab('deposit')">Deposit</button>
+                <button id="tab-withdraw" class="tab-btn" onclick="switchTab('withdraw')">Withdraw</button>
+            </div>
+
+            <div class="tab-content" id="tabContent">
+                <!-- Overview -->
+                <div id="content-overview">
+                    <div style="display: flex; flex-direction: column; gap: 24px">
+                        <h3>Account Overview</h3>
+                        <div
+                            style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px">
+                            <div class="quick-action-card" style="cursor: default">
+                                <span class="quick-action-title">Total Balance</span>
+                                <span id="displayBalance"
+                                    style="font-size: 2rem; font-weight: bold; color: #10a37f; margin: 8px 0">
+                                    $...
+                                </span>
+                                <button onclick="fetchBalance()"
+                                    style="background: transparent; border: 1px solid #10a37f; color: #10a37f; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 0.8rem">Refresh</button>
+                            </div>
+                            <div class="quick-action-card" style="cursor: default">
+                                <span class="quick-action-title">Monthly Spending</span>
+                                <span
+                                    style="font-size: 1.5rem; font-weight: bold; color: #ececec; margin: 8px 0">$1,240.50</span>
+                                <span class="quick-action-desc" style="color: #ef4444">+12% from last month</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Transactions -->
+                <div id="content-transactions" style="display: none;">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h3 style="margin: 0;">Recent Transactions</h3>
+                        <button onclick="fetchTransactions()"
+                            style="background: transparent; border: 1px solid rgba(255,255,255,0.2); color: #ececec; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 0.8rem">Refresh</button>
+                    </div>
+                    <div class="transaction-list" id="transactionsList">
+                        <!-- Transactions will be injected here via JS -->
+                        <p class="disclaimer-text">Loading transactions...</p>
+                    </div>
+                </div>
+
+                <!-- Deposit -->
+                <div id="content-deposit" style="display: none;">
+                    <div style="max-width: 400px">
+                        <h3>Deposit Funds</h3>
+                        <p class="disclaimer-text" style="text-align: left; margin-bottom: 20px">Select an account to
+                            deposit from and enter the amount.</p>
+                        <form id="depositForm">
+                            <input type="number" id="depositAmount" class="form-input" style="margin-bottom: 15px;"
+                                placeholder="Amount ($)" step="0.01" min="0.01" required />
+                            <select class="form-input"
+                                style="appearance: auto; background-color: #212121; color: #ececec; margin-bottom: 15px;">
+                                <option>External Checking (...4920)</option>
+                                <option>Savings (...1102)</option>
+                            </select>
+                            <button type="submit" class="action-submit-btn auth-btn">Initiate Deposit</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Withdraw -->
+                <div id="content-withdraw" style="display: none;">
+                    <div style="max-width: 400px">
+                        <h3>Withdraw Funds</h3>
+                        <p class="disclaimer-text" style="text-align: left; margin-bottom: 20px">Select destination and
+                            enter the amount to withdraw.</p>
+                        <form id="withdrawForm">
+                            <input type="number" id="withdrawAmount" class="form-input" style="margin-bottom: 15px;"
+                                placeholder="Amount ($)" step="0.01" min="0.01" required />
+                            <select class="form-input"
+                                style="appearance: auto; background-color: #212121; color: #ececec; margin-bottom: 15px;">
+                                <option>External Checking (...4920)</option>
+                            </select>
+                            <button type="submit" class="action-submit-btn auth-btn">Authorize Withdrawal</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- News View -->
+    <div id="newsView" class="chat-main" style="display: none; overflow-y: auto;">
+        <div class="chat-header-mobile">
+            <button class="nav-item" onclick="toggleSidebar()" style="width: auto; padding: 8px">
+                <i data-lucide="menu" style="width: 20px; height: 20px;"></i>
+            </button>
+            <div style="font-weight: 600">Financial News</div>
+            <div style="width: 36px"></div>
+        </div>
+
+        <div class="dashboard-view-container">
+            <div class="dashboard-tabs" style="display: flex; justify-content: space-between; align-items: center">
+                <div style="display: flex; gap: 8px;">
+                    <button id="news-tab-latest" class="tab-btn active" onclick="loadNews('latest')">Latest
+                        News</button>
+                    <button id="news-tab-bitcoin" class="tab-btn" onclick="loadNews('bitcoin')">Bitcoin</button>
+                    <button id="news-tab-gold" class="tab-btn" onclick="loadNews('gold')">Gold</button>
+                    <button id="news-tab-stocks" class="tab-btn" onclick="loadNews('stocks')">Stocks</button>
+                </div>
+                <button class="nav-item" style="border: 1px solid rgba(255,255,255,0.1); padding: 8px"
+                    onclick="loadNews(currentNewsCategory, true)">
+                    <i data-lucide="refresh-cw" style="width: 16px; height: 16px;"></i>
+                </button>
+            </div>
+
+            <div id="news-container" class="news-grid">
+                <!-- Articles will be injected here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Analytics View ──────────────────────────────────────────────── -->
+    <div id="analyticsView" class="chat-main" style="display:none; overflow-y:auto;">
+        <div class="chat-header-mobile">
+            <button class="nav-item" onclick="toggleSidebar()" style="width:auto;padding:8px">
+                <i data-lucide="menu" style="width:20px;height:20px;"></i>
+            </button>
+            <div style="font-weight:600">Stock Analytics</div>
+            <div style="width:36px"></div>
+        </div>
+
+        <div class="analytics-container">
+            <h2 style="font-size:1.5rem;font-weight:700;color:#f1f5f9;margin:0 0 6px;">📈 Stock Analytics</h2>
+            <p style="color:#64748b;margin:0 0 28px;font-size:0.9rem;">Search any ticker to get real-time technical
+                analysis and charts.</p>
+
+            <!-- Search -->
+            <div class="analytics-search-wrap">
+                <div class="analytics-search-row">
+                    <input id="analyticsSearchInput" class="analytics-input" type="text"
+                        placeholder="Search for a stock (e.g., NVDA, AAPL)..." autocomplete="off"
+                        oninput="onAnalyticsInput(this.value)" onkeydown="onAnalyticsKeydown(event)" />
+                    <button class="analytics-btn" onclick="analyzeStock()">Analyze</button>
+                </div>
+                <div id="analyticsDropdown" class="autocomplete-dropdown"></div>
+            </div>
+
+            <!-- Loading -->
+            <div id="analyticsLoading" class="analytics-loading" style="display:none;">
+                <div class="spinner"></div>
+                <span>Fetching market data...</span>
+            </div>
+
+            <!-- Error -->
+            <div id="analyticsError" class="analytics-error" style="display:none;"></div>
+
+            <!-- Dashboard (hidden until data loaded) -->
+            <div id="analyticsDashboard" style="display:none;">
+
+                <!-- Header row -->
+                <div class="analytics-header-row">
+                    <span id="aTickerName" class="analytics-ticker-name"></span>
+                    <span id="aPrice" class="analytics-price"></span>
+                    <span id="aChange" class="analytics-change"></span>
+                </div>
+
+                <!-- 4 Stat Cards -->
+                <div class="analytics-stat-grid">
+                    <div class="analytics-card">
+                        <div class="analytics-card-label">Period High</div>
+                        <div class="analytics-card-value" id="aSHigh"></div>
+                    </div>
+                    <div class="analytics-card">
+                        <div class="analytics-card-label">Period Low</div>
+                        <div class="analytics-card-value" id="aSLow"></div>
+                    </div>
+                    <div class="analytics-card">
+                        <div class="analytics-card-label">Average Close</div>
+                        <div class="analytics-card-value" id="aSAvgClose"></div>
+                    </div>
+                    <div class="analytics-card">
+                        <div class="analytics-card-label">Avg Volume</div>
+                        <div class="analytics-card-value" id="aSAvgVol"></div>
+                    </div>
+                </div>
+
+                <!-- Technical Indicators -->
+                <p class="analytics-section-title">Technical Indicators</p>
+                <div class="analytics-ind-grid">
+
+                    <!-- RSI -->
+                    <div class="analytics-ind-card">
+                        <div class="analytics-ind-title">RSI (14)</div>
+                        <div class="analytics-ind-value" id="aRsiVal"></div>
+                        <div class="analytics-ind-analysis" id="aRsiAnalysis"></div>
+                    </div>
+
+                    <!-- Bollinger Bands -->
+                    <div class="analytics-ind-card">
+                        <div class="analytics-ind-title">Bollinger Bands (20, 2σ)</div>
+                        <div class="analytics-ind-row">
+                            <div class="analytics-ind-pill">
+                                <span class="pill-label">Upper</span>
+                                <span class="pill-value" id="aBBUpper"></span>
+                            </div>
+                            <div class="analytics-ind-pill">
+                                <span class="pill-label">Lower</span>
+                                <span class="pill-value" id="aBBLower"></span>
+                            </div>
+                        </div>
+                        <div class="analytics-ind-analysis" id="aBBAnalysis"></div>
+                    </div>
+
+                    <!-- Moving Averages (full width) -->
+                    <div class="analytics-ind-card full-width">
+                        <div class="analytics-ind-title">Moving Averages</div>
+                        <div class="analytics-ind-row">
+                            <div class="analytics-ind-pill">
+                                <span class="pill-label">SMA 50</span>
+                                <span class="pill-value" id="aMASMA50"></span>
+                            </div>
+                            <div class="analytics-ind-pill">
+                                <span class="pill-label">SMA 200</span>
+                                <span class="pill-value" id="aMASMA200"></span>
+                            </div>
+                            <div class="analytics-ind-pill">
+                                <span class="pill-label">EMA 50</span>
+                                <span class="pill-value" id="aMAEMA50"></span>
+                            </div>
+                            <div class="analytics-ind-pill">
+                                <span class="pill-label">EMA 200</span>
+                                <span class="pill-value" id="aMAEMA200"></span>
+                            </div>
+                        </div>
+                        <div class="analytics-ind-analysis" id="aMAAnalysis"></div>
+                    </div>
+
+                    <!-- MACD (full width) -->
+                    <div class="analytics-ind-card full-width">
+                        <div class="analytics-ind-title">MACD (12, 26, 9)</div>
+                        <div class="analytics-ind-row">
+                            <div class="analytics-ind-pill">
+                                <span class="pill-label">MACD Line</span>
+                                <span class="pill-value" id="aMACDLine"></span>
+                            </div>
+                            <div class="analytics-ind-pill">
+                                <span class="pill-label">Signal</span>
+                                <span class="pill-value" id="aMACDSignal"></span>
+                            </div>
+                            <div class="analytics-ind-pill">
+                                <span class="pill-label">Histogram</span>
+                                <span class="pill-value" id="aMACDHist"></span>
+                            </div>
+                        </div>
+                        <div class="analytics-ind-analysis" id="aMACDAnalysis"></div>
+                    </div>
+
+                </div><!-- /analytics-ind-grid -->
+
+                <!-- Chart -->
+                <p class="analytics-section-title">Price Chart</p>
+                <div class="analytics-chart-card">
+                    <div class="chart-toggle-row">
+                        <button id="btnCandlestick" class="chart-toggle-btn active"
+                            onclick="switchChart('candlestick')">Candlestick</button>
+                        <button id="btnLine" class="chart-toggle-btn" onclick="switchChart('line')">Line</button>
+                    </div>
+                    <div id="analyticsChartContainer"></div>
+                </div>
+
+            </div><!-- /analyticsDashboard -->
+        </div><!-- /analytics-container -->
+    </div><!-- /analyticsView -->
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    lucide.createIcons();
+
+    let balance = 0;
+    let isSidebarOpen = false;
+    let messages = [];
+    let isLoading = false;
+
+    // Load initial balance
+    fetchBalance();
+    startNewChat();
+
+    // --- Sidebar & View Logic ---
+    function toggleSidebar() {
+        isSidebarOpen = !isSidebarOpen;
+        document.getElementById('chatSidebar').classList.toggle('open', isSidebarOpen);
+        document.getElementById('sidebarOverlay').style.display = isSidebarOpen ? 'block' : 'none';
+    }
+
+    document.getElementById('sidebarOverlay').addEventListener('click', () => {
+        if (isSidebarOpen) toggleSidebar();
+    });
+
+    function switchView(view) {
+        document.getElementById('chatView').style.display = view === 'chat' ? 'flex' : 'none';
+        document.getElementById('dashboardView').style.display = view === 'dashboard' ? 'block' : 'none';
+        document.getElementById('newsView').style.display = view === 'news' ? 'block' : 'none';
+        document.getElementById('analyticsView').style.display = view === 'analytics' ? 'block' : 'none';
+
+        document.getElementById('navChat').classList.toggle('active', view === 'chat');
+        document.getElementById('navDashboard').classList.toggle('active', view === 'dashboard');
+        document.getElementById('navNews').classList.toggle('active', view === 'news');
+        document.getElementById('navAnalytics').classList.toggle('active', view === 'analytics');
+
+        if (view === 'news' && !newsLoaded) {
+            loadNews('latest');
+        }
+        if (view === 'analytics' && !analyticsTickersLoaded) {
+            loadAnalyticsTickers();
+        }
+
+        if (window.innerWidth <= 768 && isSidebarOpen) toggleSidebar();
+    }
+
+    function switchTab(tabId) {
+        ['overview', 'transactions', 'deposit', 'withdraw'].forEach(t => {
+            document.getElementById('tab-' + t).classList.remove('active');
+            document.getElementById('content-' + t).style.display = 'none';
+        });
+        document.getElementById('tab-' + tabId).classList.add('active');
+        document.getElementById('content-' + tabId).style.display = 'block';
+
+        if (tabId === 'transactions') {
+            fetchTransactions();
+        }
+    }
+
+    // --- API Logic ---
+    async function fetchBalance() {
+        try {
+            const response = await fetch('/api/user/balance');
+            if (response.ok) {
+                const data = await response.json();
+                balance = parseFloat(data.balance);
+                document.getElementById('displayBalance').innerText = '$' + balance.toLocaleString(undefined, { minimumFractionDigits: 2 });
+                return balance;
+            } else if (response.status === 401 || response.status === 403) {
+                window.location.href = '/login';
+            }
+        } catch (error) {
+            showToast('Failed to fetch balance', 'error');
+        }
+        return balance;
+    }
+
+    // --- Chat Logic ---
+    function startNewChat() {
+        messages = [
+            { role: 'model', content: 'Welcome to KodBank AI! I am your personal financial assistant. How can I help you manage your finances today?' }
+        ];
+        renderMessages();
+        switchView('chat');
+    }
+
+    function renderMessages() {
+        const container = document.getElementById('chatMessages');
+        container.innerHTML = '';
+
+        if (messages.length === 1) {
+            container.innerHTML += `
+                <div class="quick-action-cards">
+                    <div class="quick-action-card" onclick="document.getElementById('chatInput').value='What is my current account balance?'; document.getElementById('chatForm').dispatchEvent(new Event('submit'));">
+                        <span class="quick-action-title">Check Balance</span>
+                        <span class="quick-action-desc">View your checking account balance</span>
+                    </div>
+                    <div class="quick-action-card" onclick="switchView('dashboard')">
+                        <span class="quick-action-title">View Dashboard</span>
+                        <span class="quick-action-desc">Open the full interface</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        messages.forEach(msg => {
+            const isUser = msg.role === 'user';
+            const icon = isUser ? `<i data-lucide="user" style="width: 18px; height: 18px; color: white;"></i>` : `<i data-lucide="bot" style="width: 18px; height: 18px; color: white;"></i>`;
+
+            const contentHTML = isUser ? `<p>${msg.content}</p>` : marked.parse(msg.content);
+
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'message';
+            msgDiv.innerHTML = `
+                <div class="message-avatar ${isUser ? 'user' : 'ai'}">
+                    ${icon}
+                </div>
+                <div class="message-content">
+                    ${contentHTML}
+                </div>
+            `;
+            container.appendChild(msgDiv);
+        });
+
+        if (isLoading) {
+            const loaderDiv = document.createElement('div');
+            loaderDiv.className = 'message';
+            loaderDiv.innerHTML = `
+                <div class="message-avatar ai">
+                    <i data-lucide="bot" style="width: 18px; height: 18px; color: white;"></i>
+                </div>
+                <div class="message-content">
+                    <div style="display: flex; gap: 4px; align-items: center; height: 24px">
+                        <span style="animation: pulse 1s infinite">●</span>
+                        <span style="animation: pulse 1s infinite 0.2s">●</span>
+                        <span style="animation: pulse 1s infinite 0.4s">●</span>
+                    </div>
+                </div>
+            `;
+            container.appendChild(loaderDiv);
+        }
+
+        lucide.createIcons();
+        document.getElementById('chatAnchor').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    document.getElementById('chatInput').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            document.getElementById('chatForm').dispatchEvent(new Event('submit'));
+        }
+    });
+
+    document.getElementById('chatForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const inputEl = document.getElementById('chatInput');
+        const userMessage = inputEl.value.trim();
+
+        if (!userMessage || isLoading) return;
+
+        inputEl.value = '';
+        isLoading = true;
+        messages.push({ role: 'user', content: userMessage });
+        renderMessages();
+
+        try {
+            if (userMessage.toLowerCase().includes('balance')) {
+                const currentBalance = await fetchBalance();
+                messages.push({
+                    role: 'model',
+                    content: `Your current KodBank balance is **$${currentBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}**.`
+                });
+            } else {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: userMessage,
+                        history: messages.slice(1, -1)
+                    })
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    messages.push({ role: 'model', content: data.response });
+                } else {
+                    messages.push({ role: 'model', content: 'Sorry, I encountered an error. ' + (data.message || '') });
+                }
+            }
+        } catch (error) {
+            messages.push({ role: 'model', content: 'An unexpected error occurred.' });
+        } finally {
+            isLoading = false;
+            renderMessages();
+        }
+    });
+
+    // --- Transactions Logic ---
+    async function fetchTransactions() {
+        const container = document.getElementById('transactionsList');
+        container.innerHTML = '<p class="disclaimer-text">Loading...</p>';
+        try {
+            const response = await fetch('/api/user/transactions');
+            if (response.ok) {
+                const data = await response.json();
+
+                if (data.transactions.length === 0) {
+                    container.innerHTML = '<p class="disclaimer-text">No transactions found.</p>';
+                    return;
+                }
+
+                container.innerHTML = '';
+                data.transactions.forEach(txn => {
+                    const isDeposit = txn.type === 'deposit';
+                    const amount = parseFloat(txn.amount);
+                    const date = new Date(txn.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+                    const el = document.createElement('div');
+                    el.className = 'transaction-item';
+                    el.innerHTML = `
+                        <div class="txn-left">
+                            <div class="txn-icon" style="background-color: ${isDeposit ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)'}">
+                                <i data-lucide="${isDeposit ? 'arrow-up-right' : 'arrow-down-right'}" style="width: 18px; height: 18px; color: ${isDeposit ? '#10b981' : '#ef4444'};"></i>
+                            </div>
+                            <div class="txn-details">
+                                <p class="txn-name">${isDeposit ? 'Deposit via ACH' : 'Withdrawal to Account'}</p>
+                                <span class="txn-cat">${isDeposit ? 'Deposit' : 'Withdrawal'} • ${date}</span>
+                            </div>
+                        </div>
+                        <div class="txn-right">
+                            <p class="txn-amount ${isDeposit ? '' : 'negative'}" style="color: ${isDeposit ? '#10b981' : ''}">${isDeposit ? '+' : '-'}$${amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                            <span class="txn-status">Completed</span>
+                        </div>
+                    `;
+                    container.appendChild(el);
+                });
+                lucide.createIcons();
+            } else {
+                container.innerHTML = '<p class="disclaimer-text">Failed to fetch transactions.</p>';
+            }
+        } catch (error) {
+            container.innerHTML = '<p class="disclaimer-text">Error communicating with server.</p>';
+        }
+    }
+
+    document.getElementById('depositForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const amount = document.getElementById('depositAmount').value;
+        try {
+            const res = await fetch('/api/user/deposit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ amount: amount })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                showToast(data.message, 'success');
+                document.getElementById('depositAmount').value = '';
+                fetchBalance(); // refresh balance automatically
+            } else {
+                showToast(data.message, 'error');
+            }
+        } catch (error) {
+            showToast('Deposit failed due to a network error.', 'error');
+        }
+    });
+
+    document.getElementById('withdrawForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const amount = document.getElementById('withdrawAmount').value;
+        try {
+            const res = await fetch('/api/user/withdraw', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ amount: amount })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                showToast(data.message, 'success');
+                document.getElementById('withdrawAmount').value = '';
+                fetchBalance(); // refresh balance automatically
+            } else {
+                showToast(data.message, 'error');
+            }
+        } catch (error) {
+            showToast('Withdrawal failed due to a network error.', 'error');
+        }
+    });
+
+    // --- News Aggregator Logic ---
+    let currentNewsCategory = 'latest';
+    let newsLoaded = false;
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // ── Stock Analytics Logic ──────────────────────────────────────────────
+    // ═══════════════════════════════════════════════════════════════════════
+    let analyticsTickers = [];
+    let analyticsTickersLoaded = false;
+    let analyticsDropdownSelectedIdx = -1;
+    let analyticsChart = null;
+    let analyticsCurrentData = null;  // {history, statistics, ticker}
+    let analyticsCurrentChartType = 'candlestick';
+
+    async function loadAnalyticsTickers() {
+        try {
+            const res = await fetch('/api/analytics/tickers');
+            if (res.ok) {
+                analyticsTickers = await res.json();
+                analyticsTickersLoaded = true;
+            }
+        } catch (e) { console.warn('Could not load tickers', e); }
+    }
+
+    function onAnalyticsInput(val) {
+        const q = val.trim().toLowerCase();
+        const dropdown = document.getElementById('analyticsDropdown');
+        analyticsDropdownSelectedIdx = -1;
+        if (!q) { dropdown.style.display = 'none'; return; }
+
+        const matches = analyticsTickers.filter(t =>
+            t.symbol.toLowerCase().includes(q) ||
+            t.name.toLowerCase().includes(q)
+        ).slice(0, 8);
+
+        if (!matches.length) { dropdown.style.display = 'none'; return; }
+
+        dropdown.innerHTML = matches.map((t, i) =>
+            `<div class="autocomplete-item" data-symbol="${t.symbol}" onclick="selectAnalyticsTicker('${t.symbol}')">
+                <span class="autocomplete-symbol">${t.symbol}</span>
+                <span class="autocomplete-name">${t.name}</span>
+            </div>`
+        ).join('');
+        dropdown.style.display = 'block';
+    }
+
+    function onAnalyticsKeydown(e) {
+        const dropdown = document.getElementById('analyticsDropdown');
+        const items = dropdown.querySelectorAll('.autocomplete-item');
+        if (!items.length) {
+            if (e.key === 'Enter') { analyzeStock(); }
+            return;
+        }
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            analyticsDropdownSelectedIdx = Math.min(analyticsDropdownSelectedIdx + 1, items.length - 1);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            analyticsDropdownSelectedIdx = Math.max(analyticsDropdownSelectedIdx - 1, 0);
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (analyticsDropdownSelectedIdx >= 0) {
+                selectAnalyticsTicker(items[analyticsDropdownSelectedIdx].dataset.symbol);
+            } else {
+                analyzeStock();
+            }
+            return;
+        } else if (e.key === 'Escape') {
+            dropdown.style.display = 'none'; return;
+        }
+        items.forEach((el, i) => el.classList.toggle('selected', i === analyticsDropdownSelectedIdx));
+    }
+
+    function selectAnalyticsTicker(symbol) {
+        document.getElementById('analyticsSearchInput').value = symbol;
+        document.getElementById('analyticsDropdown').style.display = 'none';
+        analyzeStock();
+    }
+
+    function showAnalyticsState(state, msg = '') {
+        document.getElementById('analyticsLoading').style.display = (state === 'loading') ? 'flex' : 'none';
+        document.getElementById('analyticsError').style.display = (state === 'error') ? 'flex' : 'none';
+        document.getElementById('analyticsDashboard').style.display = (state === 'dashboard') ? 'block' : 'none';
+        if (state === 'error') document.getElementById('analyticsError').textContent = msg;
+    }
+
+    async function analyzeStock() {
+        const ticker = document.getElementById('analyticsSearchInput').value.trim().toUpperCase();
+        document.getElementById('analyticsDropdown').style.display = 'none';
+        if (!ticker) return;
+        showAnalyticsState('loading');
+        try {
+            const res = await fetch(`/api/analytics/stock/${ticker}`);
+            if (!res.ok) {
+                const err = await res.json();
+                showAnalyticsState('error', err.message || 'Failed to load data.');
+                return;
+            }
+            const data = await res.json();
+            analyticsCurrentData = data;
+            renderAnalyticsDashboard(data);
+            showAnalyticsState('dashboard');
+        } catch (e) {
+            showAnalyticsState('error', 'Network error — please check your connection.');
+        }
+    }
+
+    function fmt$(n) { return n != null ? '$' + parseFloat(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : 'N/A'; }
+    function fmtN(n, dp = 2) { return n != null ? parseFloat(n).toLocaleString(undefined, { minimumFractionDigits: dp, maximumFractionDigits: dp }) : 'N/A'; }
+    function fmtVol(v) {
+        if (!v) return 'N/A';
+        const n = parseFloat(v);
+        if (n >= 1e9) return (n / 1e9).toFixed(2) + 'B';
+        if (n >= 1e6) return (n / 1e6).toFixed(2) + 'M';
+        if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K';
+        return n.toLocaleString();
+    }
+
+    function renderAnalyticsDashboard(data) {
+        const s = data.statistics;
+        const ticker = data.ticker;
+
+        // Header
+        document.getElementById('aTickerName').textContent = ticker;
+        document.getElementById('aPrice').textContent = fmt$(s.last_close);
+        const changeEl = document.getElementById('aChange');
+        const pct = parseFloat(s.percent_change);
+        changeEl.textContent = (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%';
+        changeEl.className = 'analytics-change ' + (pct >= 0 ? 'pos' : 'neg');
+
+        // Stat cards
+        document.getElementById('aSHigh').textContent = fmt$(s.period_high);
+        document.getElementById('aSLow').textContent = fmt$(s.period_low);
+        document.getElementById('aSAvgClose').textContent = fmt$(s.average_close);
+        document.getElementById('aSAvgVol').textContent = fmtVol(s.average_volume);
+
+        // RSI
+        const rsiEl = document.getElementById('aRsiVal');
+        rsiEl.textContent = fmtN(s.rsi);
+        rsiEl.className = 'analytics-ind-value ' + (s.rsi > 70 ? 'c-red' : s.rsi < 30 ? 'c-green' : 'c-slate');
+        document.getElementById('aRsiAnalysis').textContent = s.rsi_analysis;
+
+        // Bollinger
+        document.getElementById('aBBUpper').textContent = fmt$(s.bb_upper);
+        document.getElementById('aBBLower').textContent = fmt$(s.bb_lower);
+        document.getElementById('aBBAnalysis').textContent = s.bb_analysis;
+
+        // MA
+        document.getElementById('aMASMA50').textContent = s.ma_50_sma ? fmt$(s.ma_50_sma) : 'N/A';
+        document.getElementById('aMASMA200').textContent = s.ma_200_sma ? fmt$(s.ma_200_sma) : 'N/A';
+        document.getElementById('aMAEMA50').textContent = fmt$(s.ma_50_ema);
+        document.getElementById('aMAEMA200').textContent = fmt$(s.ma_200_ema);
+        const maAnalEl = document.getElementById('aMAAnalysis');
+        maAnalEl.textContent = s.ma_analysis;
+        maAnalEl.className = 'analytics-ind-analysis ' + (s.ma_analysis.toLowerCase().includes('bullish') ? 'c-green' : 'c-red');
+
+        // MACD
+        document.getElementById('aMACDLine').textContent = fmtN(s.macd_line, 4);
+        document.getElementById('aMACDSignal').textContent = fmtN(s.macd_signal, 4);
+        const histEl = document.getElementById('aMACDHist');
+        histEl.textContent = fmtN(s.macd_hist, 4);
+        histEl.className = 'pill-value ' + (parseFloat(s.macd_hist) >= 0 ? 'c-green' : 'c-red');
+        const macdAnalEl = document.getElementById('aMACDAnalysis');
+        macdAnalEl.textContent = s.macd_analysis;
+        macdAnalEl.className = 'analytics-ind-analysis ' + (s.macd_analysis.toLowerCase().includes('bullish') ? 'c-green' : 'c-red');
+
+        // Reset chart toggle
+        analyticsCurrentChartType = 'candlestick';
+        document.getElementById('btnCandlestick').classList.add('active');
+        document.getElementById('btnLine').classList.remove('active');
+        renderAnalyticsChart(data.history, 'candlestick');
+    }
+
+    function switchChart(type) {
+        analyticsCurrentChartType = type;
+        document.getElementById('btnCandlestick').classList.toggle('active', type === 'candlestick');
+        document.getElementById('btnLine').classList.toggle('active', type === 'line');
+        if (analyticsCurrentData) {
+            renderAnalyticsChart(analyticsCurrentData.history, type);
+        }
+    }
+
+    function parseHistoryDate(dateStr) {
+        // Yahoo dates look like "Feb 19, 2025"
+        const d = new Date(dateStr);
+        return isNaN(d.getTime()) ? null : d.getTime();
+    }
+
+    function renderAnalyticsChart(history, type) {
+        if (analyticsChart) { analyticsChart.destroy(); analyticsChart = null; }
+
+        const container = document.getElementById('analyticsChartContainer');
+        container.innerHTML = '';   // clear
+
+        if (type === 'candlestick') {
+            const series = history
+                .filter(r => r.Open && r.High && r.Low && r.Close)
+                .map(r => ({
+                    x: parseHistoryDate(r.Date),
+                    y: [
+                        parseFloat(r.Open.replace(/,/g, '')),
+                        parseFloat(r.High.replace(/,/g, '')),
+                        parseFloat(r.Low.replace(/,/g, '')),
+                        parseFloat(r.Close.replace(/,/g, ''))
+                    ]
+                }))
+                .filter(p => p.x !== null);
+
+            analyticsChart = new ApexCharts(container, {
+                chart: { type: 'candlestick', height: 340, background: 'transparent', toolbar: { show: false }, animations: { enabled: false } },
+                theme: { mode: 'dark' },
+                series: [{ data: series }],
+                dataLabels: { enabled: false },
+                xaxis: { type: 'datetime', labels: { style: { colors: '#64748b' } } },
+                yaxis: { labels: { formatter: v => '$' + v.toFixed(2), style: { colors: '#64748b' } } },
+                grid: { borderColor: 'rgba(255,255,255,0.06)' },
+                plotOptions: {
+                    candlestick: {
+                        colors: { upward: '#10b981', downward: '#ef4444' },
+                        wick: { useFillColor: true }
+                    }
+                },
+                tooltip: { theme: 'dark', x: { format: 'MMM dd, yyyy' } }
+            });
+        } else {
+            const series = history
+                .filter(r => r.Close)
+                .map(r => [parseHistoryDate(r.Date), parseFloat(r.Close.replace(/,/g, ''))])
+                .filter(p => p[0] !== null);
+
+            analyticsChart = new ApexCharts(container, {
+                chart: { type: 'area', height: 340, background: 'transparent', toolbar: { show: false }, animations: { enabled: true, speed: 600 } },
+                theme: { mode: 'dark' },
+                series: [{ name: 'Close', data: series }],
+                dataLabels: { enabled: false },
+                xaxis: { type: 'datetime', labels: { style: { colors: '#64748b' } } },
+                yaxis: { labels: { formatter: v => '$' + v.toFixed(2), style: { colors: '#64748b' } } },
+                grid: { borderColor: 'rgba(255,255,255,0.06)' },
+                stroke: { curve: 'smooth', width: 2 },
+                colors: ['#3b82f6'],
+                fill: {
+                    type: 'gradient',
+                    gradient: { shadeIntensity: 1, opacityFrom: 0.45, opacityTo: 0.05, stops: [0, 100] }
+                },
+                tooltip: { theme: 'dark', x: { format: 'MMM dd, yyyy' } }
+            });
+        }
+
+        analyticsChart.render();
+    }
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+        const wrap = document.querySelector('.analytics-search-wrap');
+        if (wrap && !wrap.contains(e.target)) {
+            const dd = document.getElementById('analyticsDropdown');
+            if (dd) dd.style.display = 'none';
+        }
+    });
+
+    // IntersectionObserver for slide-up fade animations
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('show');
+                observer.unobserve(entry.target);
+            }
+        });
+    }, {
+        threshold: 0.1,
+        rootMargin: '0px 0px -50px 0px'
+    });
+
+    async function loadNews(category, forceRefresh = false) {
+        currentNewsCategory = category;
+        newsLoaded = true;
+
+        // Update Tab styling
+        ['latest', 'bitcoin', 'gold', 'stocks'].forEach(t => {
+            document.getElementById('news-tab-' + t).classList.remove('active');
+        });
+        document.getElementById('news-tab-' + category).classList.add('active');
+
+        const container = document.getElementById('news-container');
+
+        // Render Skeletons for Loading State
+        let skeletons = '';
+        for (let i = 0; i < 6; i++) {
+            skeletons += `
+                <div class="news-card skeleton-card">
+                    <div class="skeleton-img"></div>
+                    <div class="news-content">
+                        <div class="skeleton-text" style="width: 90%; height: 20px; margin-bottom: 8px;"></div>
+                        <div class="skeleton-text" style="width: 70%; height: 20px; margin-bottom: 12px;"></div>
+                        <div class="skeleton-text" style="width: 100%; height: 12px; margin-bottom: 8px;"></div>
+                        <div class="skeleton-text" style="width: 80%; height: 12px; margin-bottom: 12px;"></div>
+                        <div class="skeleton-text" style="width: 40%; height: 10px;"></div>
+                    </div>
+                </div>
+            `;
+        }
+        container.innerHTML = skeletons;
+
+        try {
+            const response = await fetch('/api/news?category=' + category);
+            if (!response.ok) throw new Error('Failed to fetch news');
+            const data = await response.json();
+
+            container.innerHTML = '';
+
+            if (data.articles.length === 0) {
+                container.innerHTML = '<p class="disclaimer-text">No articles found right now. Try refreshing later.</p>';
+                return;
+            }
+
+            data.articles.forEach((article, index) => {
+                const card = document.createElement('a');
+                card.href = article.url;
+                card.target = "_blank";
+                card.className = "news-card hidden";
+                // Adding a slight inline delay so they stagger if they render perfectly at the top
+                card.style.transitionDelay = (index < 6 ? `${index * 50}ms` : '0ms');
+
+                card.innerHTML = `
+                    <div class="news-img" style="background-image: url('${article.image}');"></div>
+                    <div class="news-content">
+                        <h4 class="news-title">${article.title}</h4>
+                        <p class="news-desc">${article.description}</p>
+                        <span class="news-source">${article.source}</span>
+                    </div>
+                `;
+                container.appendChild(card);
+                observer.observe(card);
+            });
+
+        } catch (error) {
+            console.error(error);
+            showToast('Failed to load news.', 'error');
+            container.innerHTML = '<p class="disclaimer-text" style="color: #ef4444">Error loading financial news. Check connection.</p>';
+        }
+    }
+</script>
+{% endblock %}
