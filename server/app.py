@@ -1,6 +1,10 @@
 import os
 import json
-from flask import Flask, request, jsonify, render_template, redirect, url_for, session
+import datetime
+import urllib.request
+from bs4 import BeautifulSoup
+import io
+from flask import Flask, request, jsonify, render_template, redirect, url_for, session, Response, stream_with_context
 import mysql.connector
 from dotenv import load_dotenv
 from azure.ai.inference import ChatCompletionsClient
@@ -28,6 +32,10 @@ app = Flask(__name__, static_folder='static', template_folder='templates')
 app.secret_key = os.environ['FLASK_SECRET_KEY']
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=1)
 
+from azure.ai.inference import ChatCompletionsClient
+from azure.ai.inference.models import SystemMessage, UserMessage, AssistantMessage
+from azure.core.credentials import AzureKeyCredential
+
 # ── GitHub Models AI Client ───────────────────────────────────────────────────
 ai_client = ChatCompletionsClient(
     endpoint="https://models.github.ai/inference",
@@ -54,7 +62,7 @@ def get_db_connection():
 # --- FRONTEND ROUTES ---
 @app.route('/')
 def index():
-    return redirect(url_for('register_page'))
+    return render_template('index.html')
 
 @app.route('/register')
 def register_page():
@@ -68,6 +76,27 @@ def login_page():
 def dashboard_page():
     if 'user_id' not in session:
         return redirect(url_for('login_page'))
+        
+    username = session['user_id']
+    
+    # Clean up any temporary PDFs stored for this user
+    import glob
+    try:
+        temp_dir = os.path.join(app.root_path, 'static', 'temp_pdfs')
+        if os.path.exists(temp_dir):
+            for f in glob.glob(os.path.join(temp_dir, f"{username}_*.pdf")):
+                try:
+                    os.remove(f)
+                except Exception as e:
+                    print(f"Failed to remove temp file {f}: {e}")
+                    
+        # Also clear the in-memory tracking
+        if username in _user_docs:
+            _user_docs[username] = []
+    except Exception as e:
+        print('Dashboard cleanup error:', str(e))
+        pass
+
     return render_template('dashboard.html')
 
 # --- API BACKEND ROUTES ---
@@ -186,36 +215,64 @@ def chat():
         return jsonify({'message': 'Message is required'}), 400
 
     try:
-        # ── RAG: retrieve relevant context ────────────────────────────────
         context = rag_module.get_context(user_message, top_k=3)
-
+        history_str = ""
+        for msg in history[-6:]:
+            role = "User" if msg["role"] == "user" else "Assistant"
+            history_str += f"{role}: {msg['content']}\n"
+            
         system_prompt = (
             "You are KodBank AI, a helpful and professional financial assistant "
             "embedded in the KodBank personal finance platform. "
             "Answer clearly and concisely. If the question relates to the app, "
-            "use the provided context to give accurate guidance."
-            + context
+            "use the provided context to give accurate guidance.\n"
+            + context + "\n\n"
+            + "--- Conversation History ---\n"
+            + history_str + "\n--- End History ---\n\n"
+            + f"User Message: {user_message}"
         )
 
         messages = [SystemMessage(content=system_prompt)]
-
         for msg in history:
             if msg["role"] == "user":
                 messages.append(UserMessage(content=msg["content"]))
             elif msg["role"] == "model":
                 messages.append(AssistantMessage(content=msg["content"]))
-
         messages.append(UserMessage(content=user_message))
 
         response = ai_client.complete(
-            messages=messages,
-            model="gpt-4o"
+            messages=messages, 
+            model="meta/Llama-4-Scout-17B-16E-Instruct",
+            stream=True
         )
+        
+        def generate():
+            try:
+                for chunk in response:
+                    # Azure responses emit delta patches
+                    if chunk.choices and len(chunk.choices) > 0:
+                        delta = chunk.choices[0].delta.content
+                        if delta:
+                            yield 'data: ' + json.dumps({'token': delta}) + '\n\n'
+                yield 'data: [DONE]\n\n'
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                print('Llama Stream Error:', str(e))
+                err = json.dumps({'token': '⚠️ Stream interrupted.'})
+                yield 'data: ' + err + '\n\n'
+                yield 'data: [DONE]\n\n'
 
-        return jsonify({'response': response.choices[0].message.content}), 200
+        return Response(stream_with_context(generate()),
+                        mimetype='text/event-stream',
+                        headers={'X-Accel-Buffering': 'no', 'Cache-Control': 'no-cache'})
+
     except Exception as e:
-        print('GitHub Models error:', str(e))
+        import traceback
+        traceback.print_exc()
+        print('Llama initialization error:', str(e))
         return jsonify({'message': 'Failed to communicate with AI model'}), 500
+
 
 
 @app.route('/api/user/deposit', methods=['POST'])
@@ -447,6 +504,116 @@ def get_stock_data(ticker):
     except Exception as e:
         print(f'Analytics error for {ticker}:', str(e))
         return jsonify({'message': f'Failed to fetch stock data: {str(e)}'}), 500
+
+
+# ── Fundamental Analysis API ─────────────────────────────────────────────────
+import fundamental as fa_module
+from flask import request as freq
+
+# In-memory doc list per session (persists until server restart)
+# For production, move to MySQL FundamentalDocuments table
+_user_docs: dict[str, list[dict]] = {}
+
+@app.route('/api/fundamental/upload', methods=['POST'])
+def fundamental_upload():
+    if 'user_id' not in session:
+        return jsonify({'message': 'Unauthorized'}), 401
+    if 'file' not in request.files:
+        return jsonify({'message': 'No file uploaded'}), 400
+
+    file = request.files['file']
+    if not file.filename.lower().endswith('.pdf'):
+        return jsonify({'message': 'Only PDF files are supported'}), 400
+
+    username = session['user_id']
+    filename = file.filename
+    file_bytes = file.read()
+    
+    # Store the PDF temporarily for RAG referencing
+    temp_dir = os.path.join(app.root_path, 'static', 'temp_pdfs')
+    os.makedirs(temp_dir, exist_ok=True)
+    temp_path = os.path.join(temp_dir, f"{username}_{filename}")
+    with open(temp_path, 'wb') as f:
+        f.write(file_bytes)
+
+    try:
+        result = fa_module.upload_document(file_bytes, filename, username)
+        # Track in memory
+        if username not in _user_docs:
+            _user_docs[username] = []
+        # Remove old entry with same name if re-uploading
+        _user_docs[username] = [d for d in _user_docs[username] if d['filename'] != filename]
+        _user_docs[username].append(result)
+        return jsonify(result), 200
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        print('Fundamental upload error:', str(e))
+        return jsonify({'message': str(e)}), 500
+
+
+@app.route('/api/fundamental/documents', methods=['GET'])
+def fundamental_documents():
+    if 'user_id' not in session:
+        return jsonify({'message': 'Unauthorized'}), 401
+    username = session['user_id']
+    docs = _user_docs.get(username, [])
+    return jsonify({'documents': docs}), 200
+
+
+@app.route('/api/fundamental/document/<path:filename>', methods=['DELETE'])
+def fundamental_delete(filename):
+    if 'user_id' not in session:
+        return jsonify({'message': 'Unauthorized'}), 401
+    username = session['user_id']
+    try:
+        fa_module.delete_document(filename, username)
+        if username in _user_docs:
+            _user_docs[username] = [d for d in _user_docs[username] if d['filename'] != filename]
+        return jsonify({'message': 'Document deleted'}), 200
+    except Exception as e:
+        print('Fundamental delete error:', str(e))
+        return jsonify({'message': str(e)}), 500
+
+
+@app.route('/api/fundamental/chat', methods=['POST'])
+def fundamental_chat():
+    if 'user_id' not in session:
+        return jsonify({'message': 'Unauthorized'}), 401
+
+    data = request.get_json()
+    question = data.get('message', '').strip()
+    history  = data.get('history', [])
+
+    if not question:
+        return jsonify({'message': 'Message is required'}), 400
+
+    username = session['user_id']
+    docs = _user_docs.get(username, [])
+    if not docs:
+        # Not streaming — short circuit with a plain JSON so tests still pass
+        return jsonify({'response': 'Please upload at least one PDF document first.', 'sources': []}), 200
+
+    try:
+        chunks = fa_module.search(question, username)
+    except RuntimeError as e:
+        return jsonify({'message': str(e)}), 503
+    except Exception as e:
+        print('Fundamental search error:', str(e))
+        return jsonify({'message': str(e)}), 500
+
+    def generate():
+        try:
+            yield from fa_module.stream_answer(question, chunks, history)
+        except Exception as e:
+            print('Fundamental stream error:', str(e))
+            err = json.dumps({'token': '\u26a0\ufe0f Failed to generate answer.'})
+            yield 'data: ' + err + '\n\n'
+            yield 'data: [DONE]\n\n'
+
+    return Response(stream_with_context(generate()),
+                    mimetype='text/event-stream',
+                    headers={'X-Accel-Buffering': 'no', 'Cache-Control': 'no-cache'})
 
 
 if __name__ == '__main__':

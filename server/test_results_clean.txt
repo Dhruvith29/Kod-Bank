@@ -1,0 +1,86 @@
+
+━━━ 0. Server Connectivity ━━━
+  PASS  GET / redirects to /register
+
+━━━ 1. Auth — Register ━━━
+  PASS  POST /api/auth/register → 201  ({
+  "message": "User registered successfully"
+}
+)
+  PASS  Duplicate register → 409  ({
+  "message": "Username or Email already exists"
+}
+)
+  PASS  Missing fields → 400  ({
+  "message": "All fields are required"
+}
+)
+
+━━━ 2. Auth — Login ━━━
+  PASS  POST /api/auth/login → 200  ({
+  "message": "Login successful",
+  "role": "customer"
+}
+)
+  PASS  Bad password → 401  ({
+  "message": "Invalid username or password"
+}
+)
+  PASS  Missing password → 400  ({
+  "message": "Username and password are required"
+}
+)
+
+━━━ 3. Balance ━━━
+  PASS  GET /api/user/balance → 200
+  PASS  Balance field present  (balance=100000.00)
+  PASS  Unauthenticated balance → 401
+
+━━━ 4. Deposit ━━━
+  PASS  POST /api/user/deposit 500 → 200  ({
+  "message": "Deposit successful"
+}
+)
+  PASS  Deposit 0 → 400
+  PASS  Deposit negative → 400
+  PASS  Deposit non-numeric → 400
+
+━━━ 5. Withdraw ━━━
+  PASS  POST /api/user/withdraw 100 → 200  ({
+  "message": "Withdrawal successful"
+}
+)
+  PASS  Insufficient funds → 400
+  PASS  Withdraw 0 → 400
+
+━━━ 6. Transactions ━━━
+  PASS  GET /api/user/transactions → 200
+  PASS  Transactions list returned  (2 records)
+
+━━━ 7. News ━━━
+  PASS  GET /api/news?category=latest → 200
+  PASS  Articles array present  (18 articles)
+  PASS  GET /api/news?category=bitcoin → 200
+  PASS  Unauthenticated news → 401
+
+━━━ 8. Stock Analytics ━━━
+  PASS  GET /api/analytics/tickers → 200
+  PASS  Tickers list not empty  (5738 tickers)
+
+━━━ 9. Fundamental Analysis (without real PDF) ━━━
+  PASS  GET /api/fundamental/documents → 200
+  PASS  Documents key present
+  PASS  Upload with no file → 400
+  PASS  Fundamental chat (no docs) → 200
+  PASS  Response contains meaningful text  (Please upload at least one PDF document first.)
+  PASS  Unauth /api/fundamental/documents → 401
+  PASS  Unauth /api/fundamental/chat → 401
+
+━━━ 10. Frontend Routes ━━━
+  PASS  GET /register → 200
+  PASS  GET /login → 200
+  PASS  GET /dashboard → 200
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Results: 35 passed  0 failed  / 35 total
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

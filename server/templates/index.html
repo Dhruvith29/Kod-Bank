@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<!-- Top Banner -->
+<div class="top-banner">
+    <span class="badge">NEW</span> KodBank AI Fundamental Analysis is now available! Start analyzing 250+ page reports
+    instantly. <a href="{{ url_for('register_page') }}">Learn more</a>
+</div>
+
+<!-- Navigation -->
+<header class="home-nav">
+    <div class="nav-left">
+        <div class="brand-logo">
+            <img src="{{ url_for('static', filename='images/bank_logo.png') }}" alt="KodBank Logo"
+                style="height: 36px; width: auto;">
+            <h1>KodBank</h1>
+        </div>
+        <nav class="desktop-nav">
+            <a href="#">Features <i class="fas fa-chevron-down"></i></a>
+            <a href="#">Solutions <i class="fas fa-chevron-down"></i></a>
+            <a href="#">AI Tools <i class="fas fa-chevron-down"></i></a>
+            <a href="#">Pricing</a>
+            <a href="#">Blog</a>
+        </nav>
+    </div>
+    <div class="nav-right">
+        <a href="{{ url_for('login_page') }}" class="nav-link">Log in <i class="fas fa-arrow-up-right-from-square"
+                style="font-size: 0.8em; margin-left: 4px;"></i></a>
+        <a href="{{ url_for('register_page') }}" class="btn-demo">Book a demo</a>
+        <a href="{{ url_for('register_page') }}" class="btn-free">Start for free</a>
+        <button class="icon-btn"><i class="fas fa-search"></i></button>
+        <button class="icon-btn"><i class="fas fa-globe"></i></button>
+    </div>
+</header>
+
+<!-- Hero Section -->
+<main class="home-hero auth-container">
+    <div class="hero-content">
+        <h2 class="hero-title">The premier AI financial platform</h2>
+        <h2 class="hero-subtitle">for Investors</h2>
+        <p class="hero-desc">The fastest path to financial clarity with real-time news, automated RAG analysis, and
+            dynamic stock indicators.</p>
+
+        <div class="hero-integrations">
+            <i class="fab fa-apple" title="Apple"></i>
+            <i class="fab fa-google" title="Google"></i>
+            <i class="fab fa-microsoft" title="Microsoft"></i>
+            <i class="fab fa-aws" title="AWS"></i>
+        </div>
+
+        <div class="hero-cta">
+            <a href="{{ url_for('register_page') }}" class="btn-hero-primary">Start for free</a>
+            <a href="{{ url_for('register_page') }}" class="btn-hero-secondary">Book a demo</a>
+        </div>
+    </div>
+</main>
+{% endblock %}
