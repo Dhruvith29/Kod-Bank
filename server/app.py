@@ -78,24 +78,8 @@ def dashboard_page():
         return redirect(url_for('login_page'))
         
     username = session['user_id']
-    
-    # Clean up any temporary PDFs stored for this user
-    import glob
-    try:
-        temp_dir = os.path.join(app.root_path, 'static', 'temp_pdfs')
-        if os.path.exists(temp_dir):
-            for f in glob.glob(os.path.join(temp_dir, f"{username}_*.pdf")):
-                try:
-                    os.remove(f)
-                except Exception as e:
-                    print(f"Failed to remove temp file {f}: {e}")
-                    
-        # Also clear the in-memory tracking
-        if username in _user_docs:
-            _user_docs[username] = []
-    except Exception as e:
-        print('Dashboard cleanup error:', str(e))
-        pass
+        
+    # Standard dashboard render
 
     return render_template('dashboard.html')
 
@@ -506,115 +490,8 @@ def get_stock_data(ticker):
         return jsonify({'message': f'Failed to fetch stock data: {str(e)}'}), 500
 
 
-# ── Fundamental Analysis API ─────────────────────────────────────────────────
-import fundamental as fa_module
-from flask import request as freq
 
-# In-memory doc list per session (persists until server restart)
-# For production, move to MySQL FundamentalDocuments table
-_user_docs: dict[str, list[dict]] = {}
-
-@app.route('/api/fundamental/upload', methods=['POST'])
-def fundamental_upload():
-    if 'user_id' not in session:
-        return jsonify({'message': 'Unauthorized'}), 401
-    if 'file' not in request.files:
-        return jsonify({'message': 'No file uploaded'}), 400
-
-    file = request.files['file']
-    if not file.filename.lower().endswith('.pdf'):
-        return jsonify({'message': 'Only PDF files are supported'}), 400
-
-    username = session['user_id']
-    filename = file.filename
-    file_bytes = file.read()
-    
-    # Store the PDF temporarily for RAG referencing
-    temp_dir = os.path.join(app.root_path, 'static', 'temp_pdfs')
-    os.makedirs(temp_dir, exist_ok=True)
-    temp_path = os.path.join(temp_dir, f"{username}_{filename}")
-    with open(temp_path, 'wb') as f:
-        f.write(file_bytes)
-
-    try:
-        result = fa_module.upload_document(file_bytes, filename, username)
-        # Track in memory
-        if username not in _user_docs:
-            _user_docs[username] = []
-        # Remove old entry with same name if re-uploading
-        _user_docs[username] = [d for d in _user_docs[username] if d['filename'] != filename]
-        _user_docs[username].append(result)
-        return jsonify(result), 200
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        print('Fundamental upload error:', str(e))
-        return jsonify({'message': str(e)}), 500
-
-
-@app.route('/api/fundamental/documents', methods=['GET'])
-def fundamental_documents():
-    if 'user_id' not in session:
-        return jsonify({'message': 'Unauthorized'}), 401
-    username = session['user_id']
-    docs = _user_docs.get(username, [])
-    return jsonify({'documents': docs}), 200
-
-
-@app.route('/api/fundamental/document/<path:filename>', methods=['DELETE'])
-def fundamental_delete(filename):
-    if 'user_id' not in session:
-        return jsonify({'message': 'Unauthorized'}), 401
-    username = session['user_id']
-    try:
-        fa_module.delete_document(filename, username)
-        if username in _user_docs:
-            _user_docs[username] = [d for d in _user_docs[username] if d['filename'] != filename]
-        return jsonify({'message': 'Document deleted'}), 200
-    except Exception as e:
-        print('Fundamental delete error:', str(e))
-        return jsonify({'message': str(e)}), 500
-
-
-@app.route('/api/fundamental/chat', methods=['POST'])
-def fundamental_chat():
-    if 'user_id' not in session:
-        return jsonify({'message': 'Unauthorized'}), 401
-
-    data = request.get_json()
-    question = data.get('message', '').strip()
-    history  = data.get('history', [])
-
-    if not question:
-        return jsonify({'message': 'Message is required'}), 400
-
-    username = session['user_id']
-    docs = _user_docs.get(username, [])
-    if not docs:
-        # Not streaming — short circuit with a plain JSON so tests still pass
-        return jsonify({'response': 'Please upload at least one PDF document first.', 'sources': []}), 200
-
-    try:
-        chunks = fa_module.search(question, username)
-    except RuntimeError as e:
-        return jsonify({'message': str(e)}), 503
-    except Exception as e:
-        print('Fundamental search error:', str(e))
-        return jsonify({'message': str(e)}), 500
-
-    def generate():
-        try:
-            yield from fa_module.stream_answer(question, chunks, history)
-        except Exception as e:
-            print('Fundamental stream error:', str(e))
-            err = json.dumps({'token': '\u26a0\ufe0f Failed to generate answer.'})
-            yield 'data: ' + err + '\n\n'
-            yield 'data: [DONE]\n\n'
-
-    return Response(stream_with_context(generate()),
-                    mimetype='text/event-stream',
-                    headers={'X-Accel-Buffering': 'no', 'Cache-Control': 'no-cache'})
 
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    app.run(host='0.0.0.0', port=5000)

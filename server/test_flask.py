@@ -149,34 +149,6 @@ if r.status_code == 200:
     tickers = r.json()
     check('Tickers list not empty', len(tickers) > 0, f'{len(tickers)} tickers')
 
-# ── 9. Fundamental Analysis ───────────────────────────────────────────────────
-section('9. Fundamental Analysis (without real PDF)')
-
-# Docs list (empty is fine — just verify the endpoint works)
-r = session.get(BASE_URL + '/api/fundamental/documents')
-check('GET /api/fundamental/documents → 200', r.status_code == 200)
-if r.status_code == 200:
-    docs = r.json().get('documents', [])
-    check('Documents key present', 'documents' in r.json())
-
-# Upload without a file → 400
-r = session.post(BASE_URL + '/api/fundamental/upload')
-check('Upload with no file → 400', r.status_code == 400)
-
-# Chat without docs (should still 200 with a polite message)
-r = session.post(BASE_URL + '/api/fundamental/chat',
-                 json={'message': 'What is the revenue?', 'history': []})
-check('Fundamental chat (no docs) → 200', r.status_code == 200)
-if r.status_code == 200:
-    resp = r.json().get('response', '')
-    check('Response contains meaningful text', len(resp) > 10, resp[:80])
-
-# Unauthenticated fundamental
-for endpoint in ['/api/fundamental/documents',
-                 '/api/fundamental/chat']:
-    r_a = anon.get(BASE_URL + endpoint) if 'documents' in endpoint \
-          else anon.post(BASE_URL + endpoint, json={'message': 'x'})
-    check(f'Unauth {endpoint} → 401', r_a.status_code == 401)
 
 # ── 10. Frontend Routes ───────────────────────────────────────────────────────
 section('10. Frontend Routes')
