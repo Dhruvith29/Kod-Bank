@@ -3,6 +3,7 @@ scraper.py — Yahoo Finance historical data scraper + technical indicator calcu
 for the NexTrade / Stock Analytics feature in KodBank.
 """
 
+import datetime
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
@@ -22,41 +23,53 @@ HEADERS = {
 
 def fetch_stock_history(ticker: str) -> list[dict]:
     """
-    Scrape Yahoo Finance historical data for the given ticker symbol.
+    Fetch Yahoo Finance historical data for the given ticker symbol via query API.
     Returns a list of dicts with keys:
         Date, Open, High, Low, Close, Adj Close, Volume
     ordered oldest → newest.
     """
-    url = f"https://finance.yahoo.com/quote/{ticker}/history/"
+    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}?range=2y&interval=1d"
     try:
         resp = requests.get(url, headers=HEADERS, timeout=15)
         resp.raise_for_status()
     except requests.RequestException as exc:
         raise RuntimeError(f"Failed to fetch data for {ticker}: {exc}")
 
-    soup = BeautifulSoup(resp.text, "html.parser")
-    table = soup.find("table")
-    if table is None:
-        raise RuntimeError(f"No data table found for {ticker} on Yahoo Finance.")
+    data = resp.json()
+    result = data.get("chart", {}).get("result", [])
+    if not result:
+        raise RuntimeError(f"No data found for {ticker} on Yahoo Finance.")
+
+    chart_data = result[0]
+    timestamps = chart_data.get("timestamp", [])
+    indicators = chart_data.get("indicators", {})
+    quote = indicators.get("quote", [{}])[0]
+    
+    # Optional adjclose; fallback to normal close if missing
+    adjclose_list = indicators.get("adjclose", [{}])[0].get("adjclose", quote.get("close", []))
+
+    opens = quote.get("open", [])
+    highs = quote.get("high", [])
+    lows = quote.get("low", [])
+    closes = quote.get("close", [])
+    volumes = quote.get("volume", [])
 
     rows = []
-    for tr in table.find("tbody").find_all("tr"):
-        cells = [td.get_text(strip=True) for td in tr.find_all("td")]
-        # Only keep rows that have exactly 7 columns (skip Dividend/Split rows)
-        if len(cells) != 7:
+    for i in range(len(timestamps)):
+        if closes[i] is None:
             continue
+            
+        dt = datetime.datetime.fromtimestamp(timestamps[i]).strftime('%Y-%m-%d')
         rows.append({
-            "Date":      cells[0],
-            "Open":      cells[1],
-            "High":      cells[2],
-            "Low":       cells[3],
-            "Close":     cells[4],
-            "Adj Close": cells[5],
-            "Volume":    cells[6],
+            "Date": dt,
+            "Open": opens[i],
+            "High": highs[i],
+            "Low": lows[i],
+            "Close": closes[i],
+            "Adj Close": adjclose_list[i] if adjclose_list and i < len(adjclose_list) else closes[i],
+            "Volume": volumes[i],
         })
 
-    # Yahoo returns newest first — reverse to chronological order
-    rows.reverse()
     return rows
 
 
