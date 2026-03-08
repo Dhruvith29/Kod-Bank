@@ -7,6 +7,7 @@ import datetime
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
+import yfinance as yf
 
 
 HEADERS = {
@@ -23,54 +24,36 @@ HEADERS = {
 
 def fetch_stock_history(ticker: str) -> list[dict]:
     """
-    Fetch Yahoo Finance historical data for the given ticker symbol via query API.
+    Fetch Yahoo Finance historical data for the given ticker symbol using yfinance.
     Returns a list of dicts with keys:
         Date, Open, High, Low, Close, Adj Close, Volume
     ordered oldest → newest.
     """
-    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}?range=2y&interval=1d"
     try:
-        resp = requests.get(url, headers=HEADERS, timeout=15)
-        resp.raise_for_status()
-    except requests.RequestException as exc:
-        raise RuntimeError(f"Failed to fetch data for {ticker}: {exc}")
-
-    data = resp.json()
-    result = data.get("chart", {}).get("result", [])
-    if not result:
-        raise RuntimeError(f"No data found for {ticker} on Yahoo Finance.")
-
-    chart_data = result[0]
-    timestamps = chart_data.get("timestamp", [])
-    indicators = chart_data.get("indicators", {})
-    quote = indicators.get("quote", [{}])[0]
-    
-    # Optional adjclose; fallback to normal close if missing
-    adjclose_list = indicators.get("adjclose", [{}])[0].get("adjclose", quote.get("close", []))
-
-    opens = quote.get("open", [])
-    highs = quote.get("high", [])
-    lows = quote.get("low", [])
-    closes = quote.get("close", [])
-    volumes = quote.get("volume", [])
-
-    rows = []
-    for i in range(len(timestamps)):
-        if closes[i] is None:
-            continue
+        stock = yf.Ticker(ticker)
+        history_df = stock.history(period="2y", interval="1d")
+        
+        if history_df.empty:
+            raise RuntimeError(f"No data found for {ticker} on Yahoo Finance.")
             
-        dt = datetime.datetime.fromtimestamp(timestamps[i]).strftime('%Y-%m-%d')
-        rows.append({
-            "Date": dt,
-            "Open": opens[i],
-            "High": highs[i],
-            "Low": lows[i],
-            "Close": closes[i],
-            "Adj Close": adjclose_list[i] if adjclose_list and i < len(adjclose_list) else closes[i],
-            "Volume": volumes[i],
-        })
-
-    return rows
+        rows = []
+        for date, row in history_df.iterrows():
+            # yfinance returns timezone-aware datetime index, convert to str
+            dt_str = date.strftime('%Y-%m-%d')
+            rows.append({
+                "Date": dt_str,
+                "Open": float(row["Open"]),
+                "High": float(row["High"]),
+                "Low": float(row["Low"]),
+                "Close": float(row["Close"]),
+                "Adj Close": float(row.get("Adj Close", row["Close"])),  # yfinance might not have Adj Close depending on auto_adjust
+                "Volume": int(row["Volume"]),
+            })
+            
+        return rows
+        
+    except Exception as exc:
+        raise RuntimeError(f"Failed to fetch data for {ticker}: {exc}")
 
 
 def _clean_numeric(series: pd.Series) -> pd.Series:

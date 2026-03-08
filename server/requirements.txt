@@ -11,3 +11,4 @@ pandas
 lxml
 scikit-learn
 gunicorn
+yfinance
