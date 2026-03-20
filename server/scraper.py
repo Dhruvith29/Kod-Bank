@@ -22,32 +22,59 @@ HEADERS = {
 }
 
 
+import os
+from datetime import datetime, timedelta, timezone
+
 def fetch_stock_history(ticker: str) -> list[dict]:
     """
-    Fetch Yahoo Finance historical data for the given ticker symbol using yfinance.
+    Fetch historical data for the given ticker symbol using Alpaca Market Data API.
     Returns a list of dicts with keys:
         Date, Open, High, Low, Close, Adj Close, Volume
     ordered oldest → newest.
     """
-    try:
-        stock = yf.Ticker(ticker)
-        history_df = stock.history(period="2y", interval="1d")
+    api_key = os.environ.get('ALPACA_API_KEY', 'PA3VEAWXLOGT')
+    secret_key = os.environ.get('ALPACA_SECRET_KEY', 'PKQC3YYMZTHI6OMGSFRK6R6BD5')
+    
+    if not api_key or not secret_key:
+        raise RuntimeError("Alpaca API keys are missing. Please set ALPACA_API_KEY and ALPACA_SECRET_KEY.")
         
-        if history_df.empty:
-            raise RuntimeError(f"No data found for {ticker} on Yahoo Finance.")
+    start_date = (datetime.now(timezone.utc) - timedelta(days=730)).strftime('%Y-%m-%dT00:00:00Z')
+    
+    url = f"https://paper-api.alpaca.markets/v2/stocks/{ticker}/bars"
+    params = {
+        "timeframe": "1Day",
+        "start": start_date,
+        "feed": "iex" 
+    }
+    headers = {
+        "APCA-API-KEY-ID": api_key,
+        "APCA-API-SECRET-KEY": secret_key,
+        "Accept": "application/json"
+    }
+
+    try:
+        response = requests.get(url, headers=headers, params=params)
+        
+        if response.status_code != 200:
+            raise RuntimeError(f"Alpaca API error: {response.status_code} - {response.text}")
+            
+        data = response.json()
+        bars_data = data.get("bars", [])
+        
+        if not bars_data:
+            raise RuntimeError(f"No data found for {ticker} via Alpaca.")
             
         rows = []
-        for date, row in history_df.iterrows():
-            # yfinance returns timezone-aware datetime index, convert to str
-            dt_str = date.strftime('%Y-%m-%d')
+        for bar in bars_data:
+            dt_str = bar.get("t", "")[:10] # extract YYYY-MM-DD from '2023-01-01T04:00:00Z'
             rows.append({
                 "Date": dt_str,
-                "Open": float(row["Open"]),
-                "High": float(row["High"]),
-                "Low": float(row["Low"]),
-                "Close": float(row["Close"]),
-                "Adj Close": float(row.get("Adj Close", row["Close"])),  # yfinance might not have Adj Close depending on auto_adjust
-                "Volume": int(row["Volume"]),
+                "Open": float(bar.get("o", 0)),
+                "High": float(bar.get("h", 0)),
+                "Low": float(bar.get("l", 0)),
+                "Close": float(bar.get("c", 0)),
+                "Adj Close": float(bar.get("c", 0)), # Alpaca v2 bars are non-adjusted by default, we use Close 
+                "Volume": int(bar.get("v", 0)),
             })
             
         return rows
