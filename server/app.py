@@ -464,6 +464,8 @@ def get_tickers():
         tickers_path = os.path.join(os.path.dirname(__file__), 'combined_tickers.json')
         with open(tickers_path, 'r') as f:
             tickers = json.load(f)
+            # Remove unsupported non-US stocks (.NS) 
+            tickers = [t for t in tickers if not t.get('symbol', '').upper().endswith('.NS')]
         return jsonify(tickers), 200
     except Exception as e:
         print('Tickers error:', str(e))
