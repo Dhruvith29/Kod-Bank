@@ -1123,7 +1123,7 @@
 
     async function loadAnalyticsTickers() {
         try {
-            const res = await fetch('/api/analytics/tickers');
+            const res = await fetch('/api/stocks/tickers');
             if (res.ok) {
                 analyticsTickers = await res.json();
                 analyticsTickersLoaded = true;
@@ -1199,7 +1199,7 @@
         if (!ticker) return;
         showAnalyticsState('loading');
         try {
-            const res = await fetch(`/api/analytics/stock/${ticker}`);
+            const res = await fetch(`/api/stocks/${ticker}`);
             if (!res.ok) {
                 const err = await res.json();
                 showAnalyticsState('error', err.message || 'Failed to load data.');

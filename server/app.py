@@ -457,7 +457,7 @@ def get_news():
 # ── Stock Analytics API ─────────────────────────────────────────────────────
 from scraper import fetch_stock_history, calculate_summary_statistics
 
-@app.route('/api/analytics/tickers')
+@app.route('/api/stocks/tickers')
 def get_tickers():
     """Return the list of available tickers for autocomplete."""
     try:
@@ -469,7 +469,7 @@ def get_tickers():
         print('Tickers error:', str(e))
         return jsonify([]), 200
 
-@app.route('/api/analytics/stock/<ticker>')
+@app.route('/api/stocks/<ticker>')
 def get_stock_data(ticker):
     """Fetch historical data and compute statistics for the given ticker."""
     ticker = ticker.upper().strip()
