@@ -1307,10 +1307,10 @@
                 .map(r => ({
                     x: parseHistoryDate(r.Date),
                     y: [
-                        parseFloat(r.Open.replace(/,/g, '')),
-                        parseFloat(r.High.replace(/,/g, '')),
-                        parseFloat(r.Low.replace(/,/g, '')),
-                        parseFloat(r.Close.replace(/,/g, ''))
+                        parseFloat(String(r.Open).replace(/,/g, '')),
+                        parseFloat(String(r.High).replace(/,/g, '')),
+                        parseFloat(String(r.Low).replace(/,/g, '')),
+                        parseFloat(String(r.Close).replace(/,/g, ''))
                     ]
                 }))
                 .filter(p => p.x !== null);
@@ -1334,7 +1334,7 @@
         } else {
             const series = history
                 .filter(r => r.Close)
-                .map(r => [parseHistoryDate(r.Date), parseFloat(r.Close.replace(/,/g, ''))])
+                .map(r => [parseHistoryDate(r.Date), parseFloat(String(r.Close).replace(/,/g, ''))])
                 .filter(p => p[0] !== null);
 
             analyticsChart = new ApexCharts(container, {
