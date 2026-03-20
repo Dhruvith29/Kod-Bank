@@ -32,24 +32,28 @@ def fetch_stock_history(ticker: str) -> list[dict]:
         Date, Open, High, Low, Close, Adj Close, Volume
     ordered oldest → newest.
     """
-    api_key = os.environ.get('ALPACA_API_KEY', 'PA3VEAWXLOGT')
-    secret_key = os.environ.get('ALPACA_SECRET_KEY', 'PKQC3YYMZTHI6OMGSFRK6R6BD5')
+    api_key = os.environ.get('ALPACA_API_KEY', 'PKVPAAPDKMC4ZU7YX6RYHNKR3Y')
+    secret_key = os.environ.get('ALPACA_SECRET_KEY', '9tCLXD5wb3kFPixDKiPW1Jariam4JXWS7DNkTnDTwy3R')
     
     if not api_key or not secret_key:
         raise RuntimeError("Alpaca API keys are missing. Please set ALPACA_API_KEY and ALPACA_SECRET_KEY.")
         
     start_date = (datetime.now(timezone.utc) - timedelta(days=730)).strftime('%Y-%m-%dT00:00:00Z')
     
-    url = f"https://paper-api.alpaca.markets/v2/stocks/{ticker}/bars"
+    url = "https://data.alpaca.markets/v2/stocks/bars"
     params = {
+        "symbols": ticker,
         "timeframe": "1Day",
         "start": start_date,
-        "feed": "iex" 
+        "limit": 1000,
+        "adjustment": "raw",
+        "feed": "iex",
+        "sort": "asc"
     }
     headers = {
         "APCA-API-KEY-ID": api_key,
         "APCA-API-SECRET-KEY": secret_key,
-        "Accept": "application/json"
+        "accept": "application/json"
     }
 
     try:
@@ -59,7 +63,8 @@ def fetch_stock_history(ticker: str) -> list[dict]:
             raise RuntimeError(f"Alpaca API error: {response.status_code} - {response.text}")
             
         data = response.json()
-        bars_data = data.get("bars", [])
+        bars_dict = data.get("bars", {})
+        bars_data = bars_dict.get(ticker, [])
         
         if not bars_data:
             raise RuntimeError(f"No data found for {ticker} via Alpaca.")
